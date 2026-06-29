@@ -1,0 +1,39 @@
+name: build-windows
+
+on:
+  workflow_dispatch:        # adds a manual "Run workflow" button
+  push:
+    tags: ['v*']            # also builds when you push a tag like v0.1.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        uses: tauri-apps/tauri-action@v0
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        with:
+          args: --bundles nsis
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: calm-qa-dashboard-windows
+          path: src-tauri/target/release/bundle/nsis/*.exe
